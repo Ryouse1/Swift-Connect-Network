@@ -1,24 +1,26 @@
 import express from "express"
 import http from "http"
-import WebSocket from "ws"
+import { WebSocketServer } from "ws"
 import dns from "dns/promises"
 import os from "os"
 import process from "process"
 
 const app = express()
 const server = http.createServer(app)
-const wss = new WebSocket.Server({ server })
+const wss = new WebSocketServer({ server })
 
 const TARGET = "google.com"
 
+// ランダム関数（擬似 jitter / throughput など）
 function rand(min, max) {
   return Math.random() * (max - min) + min
 }
 
+// 実際の測定 + 擬似データ
 async function measure() {
   const t0 = Date.now()
 
-  // DNS
+  // DNS lookup
   let ip = "unknown"
   let dnsTime = 0
   try {
@@ -28,19 +30,15 @@ async function measure() {
     ip = r.address
   } catch {}
 
-  // 擬似TCP/TLS
+  // 擬似 TCP/TLS ハンドシェイク
   const tcpHandshake = Math.floor(rand(5, 15))
   const tlsHandshake = Math.floor(rand(10, 25))
-
   const rtt = Date.now() - t0 + tcpHandshake + tlsHandshake
 
   return {
     timestamp: Date.now(),
 
-    target: {
-      host: TARGET,
-      ip
-    },
+    target: { host: TARGET, ip },
 
     timing: {
       rtt,
@@ -65,7 +63,7 @@ async function measure() {
       { hop: 1, name: "render-gateway", rtt: Math.floor(rand(1, 5)) },
       { hop: 2, name: "isp-backbone", rtt: Math.floor(rand(5, 15)) },
       { hop: 3, name: "edge-node", rtt: Math.floor(rand(10, 30)) },
-      { hop: 4, name: TARGET, rtt: rtt }
+      { hop: 4, name: TARGET, rtt }
     ],
 
     security: {
@@ -84,18 +82,25 @@ async function measure() {
   }
 }
 
-/* REST（確認用） */
-app.get("/diagnose", async (_, res) => {
+/* REST 確認用 */
+app.get("/", async (_, res) => {
   res.json(await measure())
 })
 
 /* WebSocket（リアルタイム） */
 wss.on("connection", ws => {
+  console.log("Client connected")
+
   const timer = setInterval(async () => {
     ws.send(JSON.stringify(await measure()))
   }, 200)
 
-  ws.on("close", () => clearInterval(timer))
+  ws.on("close", () => {
+    clearInterval(timer)
+    console.log("Client disconnected")
+  })
 })
 
-server.listen(process.env.PORT || 3000)
+server.listen(process.env.PORT || 3000, () => {
+  console.log("Server running on port", process.env.PORT || 3000)
+})
