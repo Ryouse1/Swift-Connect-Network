@@ -1,11 +1,23 @@
 {
   "name": "netdiag-server",
   "version": "1.0.0",
+  "description": "Real-time network diagnostic server with WebSocket",
   "type": "module",
+  "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node index.js"
   },
+  "keywords": [
+    "network",
+    "diagnostic",
+    "websocket",
+    "wss"
+  ],
+  "author": "Ryouse1",
+  "license": "MIT",
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "ws": "^8.16.0"
   }
 }
